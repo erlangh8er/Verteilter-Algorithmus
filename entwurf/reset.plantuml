@@ -1,0 +1,27 @@
+@startuml Reset
+
+actor Client #red
+participant Koordinator
+participant Namensdienst
+participant Starter
+participant ggTProzess
+
+Client -> Koordinator : reset
+Koordinator -> ggTProzess : kill
+ggTProzess -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> ggTProzess : ok
+ggTProzess -> ggTProzess: kill
+ggTProzess --> Koordinator : ok
+destroy ggTProzess
+
+Koordinator -> Namensdienst : {From,reset}
+Namensdienst --> Koordinator : ok
+
+Koordinator -> Namensdienst : net_adm:ping
+Namensdienst --> Koordinator :pong
+Koordinator -> Namensdienst: {<PID>, {From, {rebind,meindienst,node()}}}
+Namensdienst --> Koordinator : ok
+
+create Starter
+Client -> Starter : go()
+@enduml

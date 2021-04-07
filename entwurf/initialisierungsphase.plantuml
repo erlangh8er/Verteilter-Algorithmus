@@ -1,0 +1,50 @@
+@startuml Initialisierungphase
+
+actor Client #red
+participant Koordinator
+participant Namensdienst
+participant Starter
+participant ggTProzess
+
+== Initialisierungphase ==
+create Namensdienst
+Client -> Namensdienst :start()
+
+create Koordinator
+Client -> Koordinator :start()
+Koordinator -> Koordinator : readConfig
+Koordinator -> Namensdienst : net_adm:ping
+Namensdienst --> Koordinator :pong
+Koordinator -> Koordinator : register()
+Koordinator -> Namensdienst: {<PID>, {From, {rebind,meindienst,node()}}}
+Namensdienst --> Koordinator : ok
+
+create Starter
+Client -> Starter : go()
+Starter -> Starter : readConfig
+Starter -> Namensdienst : net_adm:ping
+Namensdienst --> Starter : pong
+Starter -> Starter : register()
+
+Starter -> Namensdienst : {From,{lookup,Koordinator}}
+Namensdienst --> Starter :  {pin,{Name,Node}}
+Starter -> Koordinator : {<PID>,getsteeringval}
+Koordinator --> Starter : {steeringval, ArbeitsZeit,TermZeit,Quota,GGTProzessAnz}
+
+create ggTProzess
+Starter -> ggTProzess : start()
+ggTProzess --> Starter : ok
+ggTProzess -> Namensdienst : net_adm:ping
+Namensdienst --> ggTProzess : pong
+ggTProzess -> ggTProzess: register()
+ggTProzess -> Namensdienst: {<PID>, {From, {rebind,meindienst,node()}}}
+Namensdienst --> ggTProzess : ok
+ggTProzess -> Namensdienst : {From,{lookup,Koordinator}}
+Namensdienst --> ggTProzess :  {pin,{Name,Node}}
+ggTProzess -> Koordinator : {hello,GGTProzessName}
+' Beendigungsphase: Starter wird in der Initialisierungphase nach dem Start aller ggTProzess beendet
+Starter -> Starter : quit()
+
+destroy Starter
+
+@enduml

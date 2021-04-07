@@ -1,0 +1,120 @@
+@startuml Sequence_diagram
+
+actor Client #red
+participant Koordinator
+participant Namensdienst
+participant Starter
+participant ggTProzess
+participant NachbarggtProzess
+
+== Initialisierungphase ==
+Client -> Namensdienst :start()
+
+Client -> Koordinator :start()
+Koordinator -> Koordinator : readConfig
+Koordinator -> Namensdienst : net_adm:ping
+Namensdienst --> Koordinator :pong
+Koordinator -> Koordinator : register()
+Koordinator -> Namensdienst: {<PID>, {From, {rebind,meindienst,node()}}}
+Namensdienst --> Koordinator : ok
+
+Client -> Starter : go()
+Starter -> Starter : readConfig
+Starter -> Namensdienst : net_adm:ping
+Namensdienst --> Starter : pong
+Starter -> Starter : register()
+
+Starter -> Namensdienst : {From,{lookup,Koordinator}}
+Namensdienst --> Starter :  {pin,{Name,Node}}
+Starter -> Koordinator : {<PID>,getsteeringval}
+Koordinator --> Starter : {steeringval, ArbeitsZeit,TermZeit,Quota,GGTProzessAnz}
+
+Starter -> ggTProzess : start()
+ggTProzess --> Starter : ok
+ggTProzess -> Namensdienst : net_adm:ping
+Namensdienst --> ggTProzess : pong
+ggTProzess -> ggTProzess: register()
+ggTProzess -> Namensdienst: {<PID>, {From, {rebind,meindienst,node()}}}
+Namensdienst --> ggTProzess : ok
+ggTProzess -> Namensdienst : {From,{lookup,Koordinator}}
+Namensdienst --> ggTProzess :  {pin,{Name,Node}}
+ggTProzess -> Koordinator : {hello,GGTProzessName}
+' Beendigungsphase: Starter wird in der Initialisierungphase nach dem Start aller ggTProzess beendet
+Starter -> Starter : quit()
+
+== Vorbereitungsphase ==
+Client -> Koordinator : step
+Koordinator -> Koordinator : ringAufbauen()
+Koordinator -> Namensdienst : {From,{lookup,ggTProzess}}
+Namensdienst --> Koordinator :  {pin,{Name,Node}}
+Koordinator -> ggTProzess : {setneighbors,LeftN,RightN}
+
+== Arbeitphase ==
+'TODO: Mit Steffen besprechnen
+Client -> Koordinator : {calc,WggT}
+'TODO: Mit Steffen besprechnen, Vor einer ggT-Berechnung erwartet der ggT-Prozess vom Koordinator seine Zahl Mi (setpm).
+Koordinator -> ggTProzess : {setpm,MiNeu}
+Koordinator -> Koordinator : wähleGGTProcessAus()
+'TODO: der koordinator sendet hier kein sendy? ggTProzess macht ein briefmi
+'Koordinator -> ggTProzess : {sendy,Y}
+
+Koordinator -> ggTProzess : {sendy,Y}
+'TODO: Mit Steffen besprechnen Der ggT-Prozess reagiert auf die jeweiligen Nachrichten. Wenn er z.B. eine Zahl erhält (sendy) führt er den ggT-Algorithmus aus.
+ggTProzess -> ggTProzess : ggT-Algorithmus()
+'TODO: Mit Steffen besprechnen Für eine ggT-Berechnung braucht er jedoch eine gewisse Zeit (die Verzögerungszeit), die ihm vom Starter bei der Initialisierung mitgegeben wurde. Dies simuliert eine größere, Zeit intensivere Aufgabe. Der ggT-Prozess soll in dieser Zeit einfach nichts tun (timer:sleep).
+ggTProzess -> ggTProzess : timer:sleep()
+alt Wert des ggTProzess ändert sich
+    ggTProzess -> Namensdienst : {From,{lookup,NachbarggtProzess}}
+    Namensdienst --> ggTProzess :  {pin,{Name,Node}}
+    'veraendert sich bei einem ggTProzess auf grund seiner berechnung sein wert, informiert er den koordinator
+    ggTProzess -> NachbarggtProzess : {sendy,Y}
+    'TODO; Mit Steffen besprechnen
+    ggTProzess -> Koordinator : {briefmi,{GGTProName,CMi,CZeit}}
+end
+'TODO: was sollte folgend passieren?
+'TODO: der ggTProzess informiert seine linken/rechten nachbarn mittels briefmi
+'Loesung: ggTProzess --> ggTProzess : {sendy,MiNeu}
+'allerdings nicht der selbe process sondern seine nachbarn
+
+== Terminierung ==
+' dazu befragt er per multicast UEBER den Namensdienst alle anderen ggTProzess
+'TODO: Mit Steffen besprechnen Hat diese ?Xterm Sekunden überschritten (Terminierungszeit), startet er eine Terminierungsanfrage (multicast,vote).
+alt ?Xterm Sekunden überschritten
+    ggTProzess -> Namensdienst : {<PID>, {multicast,vote,MeinName}}
+end
+Namensdienst --> NachbarggtProzess : {​​From,{​​vote,ggTProzess}​​}​​
+NachbarggtProzess -> ggTProzess : {voteYes, GGTProName}
+'TODO: Mit Steffen besprechnen
+'Zudem zählt er seine erfolgreich gemeldeten Terminierungsmeldungen und notiert dies in seinem log.
+ggTProzess -> ggTProzess : logTerminierungsMeldung
+'TODO: Mit Steffen besprechnen
+'Ist die Terminierungsanfrage erfolgreich durchgeführt (voteYes ist bzgl. der Quote oft genug eingegangen), sendet er dem Koordinator eine Mitteilung über die Terminierung der aktuellen Berechnung, die seinen Namen, den errechneten ggT (sein aktuelles Mi) und seine aktuelle Systemzeit beinhaltet.
+'Wenn die Quote z.B 80 ist, dann müssen 80% der ggtProzesse mit yes antworten
+alt voteYes ist bzgl. der Quote oft genug eingegangen
+    ggTProzess -> Koordinator : {<PID>, briefterm, {GGTProName,CMi,CZeit}}
+    alt wenn CMi != WggT && TerminierungsFlag (aus der Config) == true
+        Koordinator --> ggTProzess : {sendy, LCMi}
+        Koordinator -> Koordinator : logDieKorrektur
+    end
+end
+
+== Beendigungsphase ==
+
+'TODO: Mit Steffen besprechnen
+Client -> Koordinator : kill
+Koordinator -> ggTProzess : kill
+ggTProzess -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> ggTProzess : ok
+ggTProzess -> ggTProzess: kill
+ggTProzess --> Koordinator : ok
+
+Koordinator -> NachbarggtProzess : kill
+NachbarggtProzess -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> NachbarggtProzess : ok
+NachbarggtProzess -> NachbarggtProzess: kill
+NachbarggtProzess --> Koordinator : ok
+
+Koordinator -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> Koordinator : ok
+Koordinator -> Koordinator : exit()
+@enduml

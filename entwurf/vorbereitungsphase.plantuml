@@ -1,0 +1,15 @@
+@startuml Vorbereitungsphase
+
+actor Client #red
+participant Koordinator
+participant Namensdienst
+participant ggTProzess
+
+== Vorbereitungsphase ==
+Client -> Koordinator : step
+Koordinator -> Koordinator : ringAufbauen()
+Koordinator -> Namensdienst : {From,{lookup,ggTProzess}}
+Namensdienst --> Koordinator :  {pin,{Name,Node}}
+Koordinator -> ggTProzess : {setneighbors,LeftN,RightN}
+
+@enduml

@@ -1,0 +1,38 @@
+@startuml Arbeitphase
+
+actor Client #red
+participant Koordinator
+participant Namensdienst
+participant ggTProzess
+participant NachbarggtProzess
+
+== Arbeitphase ==
+'TODO: Mit Steffen besprechnen
+Client -> Koordinator : {calc,WggT}
+'TODO: Mit Steffen besprechnen, Vor einer ggT-Berechnung erwartet der ggT-Prozess vom Koordinator seine Zahl Mi (setpm).
+Koordinator -> ggTProzess : {setpm,MiNeu}
+Koordinator -> NachbarggtProzess : {setpm,MiNeu}
+Koordinator -> Koordinator : wähleZwanzigProzentGGTProcessesAus()
+'TODO: der koordinator sendet hier kein sendy? ggTProzess macht ein briefmi
+'Koordinator -> ggTProzess : {sendy,Y}
+
+Koordinator -> ggTProzess : {sendy,Y}
+Koordinator -> NachbarggtProzess : {sendy,Y}
+'TODO: Mit Steffen besprechnen Der ggT-Prozess reagiert auf die jeweiligen Nachrichten. Wenn er z.B. eine Zahl erhält (sendy) führt er den ggT-Algorithmus aus.
+ggTProzess -> ggTProzess : ggT-Algorithmus()
+'TODO: Mit Steffen besprechnen Für eine ggT-Berechnung braucht er jedoch eine gewisse Zeit (die Verzögerungszeit), die ihm vom Starter bei der Initialisierung mitgegeben wurde. Dies simuliert eine größere, Zeit intensivere Aufgabe. Der ggT-Prozess soll in dieser Zeit einfach nichts tun (timer:sleep).
+ggTProzess -> ggTProzess : timer:sleep()
+alt Wert des ggTProzess ändert sich
+    ggTProzess -> Namensdienst : {From,{lookup,NachbarggtProzess}}
+    Namensdienst --> ggTProzess :  {pin,{Name,Node}}
+    'veraendert sich bei einem ggTProzess auf grund seiner berechnung sein wert, informiert er den koordinator
+    ggTProzess -> NachbarggtProzess : {sendy,Y}
+    'TODO; Mit Steffen besprechnen
+    ggTProzess -> Koordinator : {briefmi,{GGTProName,CMi,CZeit}}
+end
+'TODO: was sollte folgend passieren?
+'TODO: der ggTProzess informiert seine linken/rechten nachbarn mittels briefmi
+'Loesung: ggTProzess --> ggTProzess : {sendy,MiNeu}
+'allerdings nicht der selbe process sondern seine nachbarn
+
+@enduml

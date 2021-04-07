@@ -1,0 +1,32 @@
+@startuml Beendigungsphase
+
+actor Client #red
+participant Koordinator
+participant Namensdienst
+participant ggTProzess
+participant NachbarggtProzess
+
+== Beendigungsphase ==
+
+'TODO: Mit Steffen besprechnen
+Client -> Koordinator : kill
+Koordinator -> ggTProzess : kill
+ggTProzess -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> ggTProzess : ok
+ggTProzess -> ggTProzess: kill
+ggTProzess --> Koordinator : ok
+destroy ggTProzess
+
+Koordinator -> NachbarggtProzess : kill
+NachbarggtProzess -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> NachbarggtProzess : ok
+NachbarggtProzess -> NachbarggtProzess: kill
+NachbarggtProzess --> Koordinator : ok
+destroy NachbarggtProzess
+
+Koordinator -> Namensdienst : {<PID>,{unbind,MeinName}}
+Namensdienst --> Koordinator : ok
+Koordinator -> Koordinator : exit()
+destroy Koordinator
+
+@enduml

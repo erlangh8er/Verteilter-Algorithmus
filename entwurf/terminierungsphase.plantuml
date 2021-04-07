@@ -1,0 +1,30 @@
+@startuml Terminierung
+
+participant Koordinator
+participant Namensdienst
+participant ggTProzess
+participant NachbarggtProzess
+
+== Terminierung ==
+' dazu befragt er per multicast UEBER den Namensdienst alle anderen ggTProzess
+'TODO: Mit Steffen besprechnen Hat diese ?Xterm Sekunden überschritten (Terminierungszeit), startet er eine Terminierungsanfrage (multicast,vote).
+alt ?Xterm Sekunden überschritten && ein sendy oder setpm wurde gesendet seit letzten multicast
+    ggTProzess -> Namensdienst : {<PID>, {multicast,vote,MeinName}}
+end
+Namensdienst --> NachbarggtProzess : {​​From,{​​vote,ggTProzess}​​}​​
+NachbarggtProzess -> ggTProzess : {voteYes, GGTProName}
+'TODO: Mit Steffen besprechnen
+'Zudem zählt er seine erfolgreich gemeldeten Terminierungsmeldungen und notiert dies in seinem log.
+ggTProzess -> ggTProzess : logTerminierungsMeldung
+'TODO: Mit Steffen besprechnen
+'Ist die Terminierungsanfrage erfolgreich durchgeführt (voteYes ist bzgl. der Quote oft genug eingegangen), sendet er dem Koordinator eine Mitteilung über die Terminierung der aktuellen Berechnung, die seinen Namen, den errechneten ggT (sein aktuelles Mi) und seine aktuelle Systemzeit beinhaltet.
+'Wenn die Quote z.B 80 ist, dann müssen 80% der ggtProzesse mit yes antworten
+alt voteYes ist bzgl. der Quote oft genug eingegangen
+    ggTProzess -> Koordinator : {<PID>, briefterm, {GGTProName,CMi,CZeit}}
+    alt wenn CMi != WggT && TerminierungsFlag (aus der Config) == true
+        Koordinator --> ggTProzess : {sendy, LCMi}
+        Koordinator -> Koordinator : logDieKorrektur
+    end
+end
+
+@enduml
